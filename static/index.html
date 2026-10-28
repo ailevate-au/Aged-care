@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Nursing Notes</title>
+  <style>
+    :root {
+      --bg: #f6f7f9; --card: #fff; --soft: #f0f2f5; --text: #1c1f24; --muted: #6b7280;
+      --border: #e3e6ea; --error: #c0392b; --error-bg: #fdecea; --ok: #1e7b45; --ok-bg: #e6f4ec;
+      --warn: #a86400; --warn-bg: #fff4e0;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+           font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    main { max-width: 1200px; margin: 32px auto; padding: 0 16px; display: grid; gap: 16px; }
+    h1 { font-size: 20px; margin: 0; }
+    h2 { font-size: 17px; margin: 0 0 12px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+    .caption { color: var(--muted); font-size: 13px; }
+    .error { color: var(--error); }
+    button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--border);
+             background: var(--card); padding: 6px 12px; }
+    button.primary { background: var(--text); color: #fff; border-color: var(--text); }
+    button.small { font-size: 12px; padding: 2px 8px; }
+    button:disabled { opacity: 0.6; cursor: default; }
+    label { display: grid; gap: 4px; font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+    input, select, textarea { font: inherit; font-weight: 400; padding: 7px 9px; border: 1px solid var(--border);
+                              border-radius: 8px; background: var(--card); color: var(--text); width: 100%; }
+    textarea { min-height: 90px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+    .message { padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; }
+    .message.ok { color: var(--ok); background: var(--ok-bg); }
+    .message.error { color: var(--error); background: var(--error-bg); }
+    .message.warn { color: var(--warn); background: var(--warn-bg); }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .panel { border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; background: var(--soft); }
+    .panel h3 { font-size: 15px; margin: 0 0 12px; }
+    .panel h4 { font-size: 13px; color: var(--muted); margin: 4px 0 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+    .grid2 .wide { grid-column: 1 / -1; }
+    textarea.short { min-height: 56px; }
+
+    #chat-log { display: grid; gap: 10px; margin-bottom: 12px; max-height: 600px; overflow-y: auto; }
+    #chat-log .suggestion { display: block; text-align: left; margin-top: 6px; }
+    .bubble { padding: 10px 14px; border-radius: 12px; max-width: 90%; }
+    .bubble p { margin: 0 0 6px; }
+    .bubble ul { margin: 0 0 6px; padding-left: 20px; }
+    .bubble.user { justify-self: end; background: var(--text); color: #fff; }
+    .bubble.assistant { justify-self: start; background: var(--soft); }
+    .bubble .tools { margin-top: 6px; font-size: 12px; color: var(--muted); }
+    .ref { font-size: 11px; font-family: ui-monospace, monospace; background: var(--card); border: 1px solid var(--border);
+           border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+    .chat-input { display: flex; gap: 8px; }
+    .report-controls { display: grid; grid-template-columns: 1.3fr 1.3fr 1fr 1.3fr auto; gap: 12px; align-items: end; }
+    .report-controls .actions { margin-bottom: 12px; }
+    #report-draft { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 16px; }
+    #report-draft textarea { min-height: 120px; }
+    .facts { border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
+    .facts th { text-align: left; font-weight: 500; color: var(--muted); padding: 2px 16px 2px 0; vertical-align: top; white-space: nowrap; }
+    .facts td { padding: 2px 0; }
+    .print-only { display: none; }
+    @media (max-width: 860px) { .row, .grid2, .report-controls { grid-template-columns: 1fr; } }
+
+    /* Printing shows only the report, laid out as a document */
+    @media print {
+      @page { margin: 18mm; }
+      body { background: #fff; font-size: 12pt; }
+      main { display: none !important; }
+      .print-only { display: block; color: #000; }
+      .print-only h1 { font-size: 18pt; margin: 0 0 4pt; }
+      .print-only h2 { font-size: 12.5pt; margin: 16pt 0 4pt; }
+      .print-only p, .print-only li { margin: 0 0 4pt; }
+      .print-only ul { padding-left: 18pt; margin: 0 0 6pt; }
+      .print-only .ref { border: none; background: none; padding: 0; font-size: 9pt; color: #555; }
+      .print-only .facts th { color: #444; }
+      .print-only .sign { margin-top: 28pt; }
+      .print-only footer { margin-top: 24pt; padding-top: 6pt; border-top: 1px solid #999; font-size: 9pt; color: #555; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Home Nursing Notes</h1>
+  <div class="card">
+    <h2>Ask about a patient</h2>
+    <div id="chat-log">
+      <div class="caption">Try:
+        <button type="button" class="small suggestion">Does Arthur Pendelton have new observations for the last 30 days?</button>
+        <button type="button" class="small suggestion">Summarise Margaret Vance's last 3 months.</button>
+        <button type="button" class="small suggestion">Has any patient mentioned a fall in the last year?</button>
+      </div>
+    </div>
+    <form id="chat-form" class="chat-input">
+      <input name="question" placeholder="Ask a question about a patient…" autocomplete="off" required>
+      <button type="submit" class="primary">Send</button>
+    </form>
+    <div class="caption" style="margin-top:8px">Answers are generated by AI from the notes dated in brackets. Check the notes before acting.</div>
+  </div>
+
+  <div class="card">
+    <h2>Reports</h2>
+    <div id="report-message"></div>
+    <form id="report-form">
+      <div class="report-controls">
+        <label>Patient *
+          <select name="patient_id" required></select>
+        </label>
+        <label>Report type *
+          <select name="report_type">
+            <option value="coordinator">Coordinator follow-up summary</option>
+            <option value="gp">GP update</option>
+          </select>
+        </label>
+        <label>Period
+          <select name="period">
+            <option value="30">Last 30 days</option>
+            <option value="90" selected>Last 3 months</option>
+            <option value="180">Last 6 months</option>
+            <option value="365">Last 12 months</option>
+            <option value="custom">Custom dates…</option>
+          </select>
+        </label>
+        <label>Prepared by
+          <input name="sender" placeholder="e.g. Jane Lee, RN – Oakridge Home Nursing">
+        </label>
+        <div class="actions"><button type="submit" class="primary" id="generate-report">Generate</button></div>
+      </div>
+      <div id="custom-period" class="row" style="max-width: 420px" hidden>
+        <label>From<input name="start_date" type="date"></label>
+        <label>To<input name="end_date" type="date"></label>
+      </div>
+    </form>
+    <div id="report-draft" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2>SOAP note</h2>
+    <div id="note-message"></div>
+    <form id="note-form">
+      <div class="row">
+        <label>Patient *
+          <select name="patient_id" required></select>
+        </label>
+        <label id="date-field">Date *
+          <input name="date" type="date" required>
+        </label>
+      </div>
+
+      <div id="new-patient" class="panel" hidden>
+        <h3>New patient</h3>
+        <div class="grid2">
+          <label>First name *<input data-patient="first_name"></label>
+          <label>Last name *<input data-patient="last_name"></label>
+          <label>Gender *
+            <select data-patient="gender">
+              <option value="">Choose…</option><option>Female</option><option>Male</option><option>Other</option>
+            </select>
+          </label>
+          <label>Date of birth *<input data-patient="date_of_birth" type="date"></label>
+          <label>Phone number<input data-patient="phone_number" type="tel" placeholder="(555) 123-4567"></label>
+          <label>Primary language<input data-patient="primary_language" value="English"></label>
+          <label class="wide">Address<input data-patient="address" placeholder="Street, suburb, state, postcode"></label>
+        </div>
+
+        <h4>Emergency contact</h4>
+        <div class="grid2">
+          <label>Name<input data-patient="emergency_contact_name"></label>
+          <label>Relationship
+            <select data-patient="emergency_contact_relationship">
+              <option value="">Choose…</option><option>Son</option><option>Daughter</option>
+              <option>Spouse / Partner</option><option>Sibling</option><option>Friend</option><option>Other</option>
+            </select>
+          </label>
+          <label>Phone<input data-patient="emergency_contact_phone" type="tel"></label>
+        </div>
+
+        <h4>Medical</h4>
+        <div class="grid2">
+          <label>Blood type
+            <select data-patient="blood_type">
+              <option value="">Unknown</option>
+              <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+              <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+            </select>
+          </label>
+          <label>Mobility status<input data-patient="mobility_status" placeholder="e.g. Ambulatory with cane (Fall precautions)"></label>
+          <label class="wide">Allergies<input data-patient="allergies" placeholder="e.g. Penicillin (rash), Pollen"></label>
+          <label class="wide">Chronic conditions<textarea data-patient="chronic_conditions" class="short" placeholder="e.g. Type 2 Diabetes Mellitus, Essential Hypertension"></textarea></label>
+          <label>Primary care physician<input data-patient="primary_care_physician" placeholder="e.g. Dr. Sarah Jenkins, MD"></label>
+          <label>Physician contact<input data-patient="physician_contact" type="tel"></label>
+        </div>
+
+        <h4>Care</h4>
+        <div class="grid2">
+          <label>Care status
+            <select data-patient="care_status">
+              <option>Active Home Nursing</option><option>On Hold</option><option>Discharged</option>
+            </select>
+          </label>
+          <label>Admission date<input data-patient="admission_date" type="date"></label>
+          <label class="wide">Insurance provider<input data-patient="insurance_provider"></label>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="cancel-patient">Cancel</button>
+          <button type="button" class="primary" id="save-patient">Save patient</button>
+        </div>
+      </div>
+
+      <div id="soap-fields">
+      <div id="existing-notice" class="message warn" hidden>A note already exists for this patient on this date. Saving will update it.</div>
+      <div id="file-panel" class="panel" hidden>
+        <h3>Fill from a scanned note <span class="caption">(optional)</span></h3>
+        <div class="chat-input">
+          <input id="note-file" type="file" accept=".pdf,image/png,image/jpeg,image/webp,image/gif">
+          <button type="button" id="read-file">Read file</button>
+        </div>
+        <div class="caption" style="margin-top:8px">The file is sent to OpenAI to read the SOAP sections and is not stored. Names and dates in the file are ignored. Check the text below before saving.</div>
+      </div>
+      <label>Subjective
+        <textarea name="subjective" placeholder="What the patient reports: symptoms, concerns, how they feel."></textarea>
+      </label>
+      <label>Objective
+        <textarea name="objective" placeholder="What you measured and observed: vital signs, examination findings."></textarea>
+      </label>
+      <label>Assessment
+        <textarea name="assessment" placeholder="Your assessment of the patient's condition and any changes."></textarea>
+      </label>
+      <label>Plan
+        <textarea name="plan" placeholder="Next steps: care actions, monitoring, referrals, next visit."></textarea>
+      </label>
+      <div class="actions">
+        <button type="button" id="clear-note">Clear</button>
+        <button type="submit" class="primary" id="save-note">Save</button>
+      </div>
+      </div>
+    </form>
+  </div>
+</main>
+
+<div id="print-view" class="print-only"></div>
+
+<script>
+  const SOAP = ["subjective", "objective", "assessment", "plan"];
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function showMessage(el, text, kind) {
+    el.innerHTML = text ? `<div class="message ${kind}">${esc(text)}</div>` : "";
+  }
+
+  function localToday() {
+    const d = new Date();
+    return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  }
+
+  // ---------- SOAP note form ----------
+
+  const noteForm = document.getElementById("note-form");
+  const noteMessage = document.getElementById("note-message");
+  let patients = [];
+  let prefilled = false;  // true when the text boxes hold an existing note loaded from the database
+
+  async function loadPatients() {
+    patients = await (await fetch("/api/patients")).json();
+    const options = patients.map(p => `<option value="${esc(p.patient_id)}">${esc(p.first_name)} ${esc(p.last_name)}</option>`).join("");
+    noteForm.patient_id.innerHTML = '<option value="">Choose a patient…</option>' +
+      '<option value="new">+ Add new patient…</option>' + options;
+    const reportPatient = reportForm.patient_id.value;
+    reportForm.patient_id.innerHTML = '<option value="">Choose a patient…</option>' + options;
+    reportForm.patient_id.value = reportPatient;
+  }
+
+  // ---------- New patient panel ----------
+
+  const patientInputs = () => [...document.querySelectorAll("[data-patient]")];
+
+  function onPatientChange() {
+    const isNew = noteForm.patient_id.value === "new";
+    document.getElementById("new-patient").hidden = !isNew;
+    // The date and SOAP boxes belong to a note, so hide them until the patient exists
+    document.getElementById("soap-fields").hidden = isNew;
+    document.getElementById("date-field").hidden = isNew;
+    const admission = document.querySelector('[data-patient="admission_date"]');
+    if (isNew && !admission.value) admission.value = localToday();
+    if (!isNew) checkExistingNote();
+  }
+
+  function resetPatientPanel() {
+    patientInputs().forEach(el => { el.value = el.defaultValue ?? ""; if (el.tagName === "SELECT") el.selectedIndex = 0; });
+  }
+
+  async function savePatient() {
+    const saveBtn = document.getElementById("save-patient");
+    saveBtn.disabled = true;
+    try {
+      const body = Object.fromEntries(patientInputs().map(el => [el.dataset.patient, el.value]));
+      const res = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+      await loadPatients();
+      noteForm.patient_id.value = result.patient_id;
+      resetPatientPanel();
+      onPatientChange();
+      showMessage(noteMessage, `Added ${body.first_name.trim()} ${body.last_name.trim()} (${result.patient_id}). You can now write their first note.`, "ok");
+    } catch (err) {
+      showMessage(noteMessage, "Could not add patient: " + err.message, "error");
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+
+  document.getElementById("save-patient").addEventListener("click", savePatient);
+  document.getElementById("cancel-patient").addEventListener("click", () => {
+    noteForm.patient_id.value = "";
+    resetPatientPanel();
+    onPatientChange();
+    showMessage(noteMessage, "");
+  });
+
+  async function checkExistingNote() {
+    const notice = document.getElementById("existing-notice");
+    const patientId = noteForm.patient_id.value, date = noteForm.date.value;
+    // Uploading only makes sense once the note's patient and date are known
+    document.getElementById("file-panel").hidden = !patientId || patientId === "new" || !date;
+    if (!patientId || !date) { notice.hidden = true; return; }
+
+    const note = await (await fetch(`/api/soap-notes/${encodeURIComponent(patientId)}/${date}`)).json();
+    const typed = !prefilled && SOAP.some(f => noteForm[f].value.trim());
+    if (note) {
+      if (!typed || confirm("A note already exists for this date. Replace what you've typed with the saved note?")) {
+        SOAP.forEach(f => { noteForm[f].value = note[f] || ""; });
+        prefilled = true;
+      }
+      notice.hidden = false;
+    } else {
+      if (prefilled) SOAP.forEach(f => { noteForm[f].value = ""; });
+      prefilled = false;
+      notice.hidden = true;
+    }
+  }
+
+  function clearNote() {
+    noteForm.reset();
+    noteForm.date.value = localToday();
+    prefilled = false;
+    document.getElementById("existing-notice").hidden = true;
+    onPatientChange();
+  }
+
+  noteForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    // Pressing Enter inside the new patient panel should save the patient, not a note
+    if (noteForm.patient_id.value === "new") return savePatient();
+    const saveBtn = document.getElementById("save-note");
+    saveBtn.disabled = true;
+    try {
+      const body = { patient_id: noteForm.patient_id.value, date: noteForm.date.value };
+      SOAP.forEach(f => { body[f] = noteForm[f].value; });
+      const res = await fetch("/api/soap-notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+      const name = noteForm.patient_id.selectedOptions[0].textContent;
+      showMessage(noteMessage, `${result.status === "inserted" ? "Saved" : "Updated"} the note for ${name} on ${body.date}.`, "ok");
+      clearNote();
+    } catch (err) {
+      showMessage(noteMessage, "Could not save: " + err.message, "error");
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  async function readFile() {
+    const file = document.getElementById("note-file").files[0];
+    if (!file) return showMessage(noteMessage, "Please choose a PDF or image first.", "error");
+    if (SOAP.some(f => noteForm[f].value.trim()) &&
+        !confirm("Replace the text in the SOAP boxes with what is read from the file?")) return;
+
+    const readBtn = document.getElementById("read-file");
+    readBtn.disabled = true;
+    readBtn.textContent = "Reading…";
+    showMessage(noteMessage, "");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/soap-notes/extract", { method: "POST", body });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+      SOAP.forEach(f => { noteForm[f].value = result[f] || ""; });
+      prefilled = false;  // the boxes now hold new text, not the saved note
+      showMessage(noteMessage, `Read "${file.name}". Check and edit the text below, then click Save.`, "ok");
+    } catch (err) {
+      showMessage(noteMessage, "Could not read the file: " + err.message, "error");
+    } finally {
+      readBtn.disabled = false;
+      readBtn.textContent = "Read file";
+    }
+  }
+
+  document.getElementById("read-file").addEventListener("click", readFile);
+  noteForm.patient_id.addEventListener("change", onPatientChange);
+  noteForm.date.addEventListener("change", checkExistingNote);
+  document.getElementById("clear-note").addEventListener("click", () => { clearNote(); showMessage(noteMessage, ""); });
+
+  // ---------- Chat ----------
+
+  const chatHistory = [];
+  const chatLog = document.getElementById("chat-log");
+  const chatForm = document.getElementById("chat-form");
+
+  // Minimal markdown: bullets, **bold**, headings, and [2026-10-17]-style note references
+  function renderMarkdown(text) {
+    let html = "", inList = false;
+    for (const line of esc(text).split("\n")) {
+      const item = line.match(/^\s*[-*]\s+(.*)/);
+      if (item && !inList) { html += "<ul>"; inList = true; }
+      if (!item && inList) { html += "</ul>"; inList = false; }
+      const content = (item ? item[1] : line)
+        .replace(/^#{1,4}\s+(.*)/, "<strong>$1</strong>")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\[(\d{4}-\d{2}-\d{2})\]/g, '<span class="ref">$1</span>');
+      html += item ? `<li>${content}</li>` : (content.trim() ? `<p>${content}</p>` : "");
+    }
+    return html + (inList ? "</ul>" : "");
+  }
+
+  function addBubble(role, html) {
+    const el = document.createElement("div");
+    el.className = `bubble ${role}`;
+    el.innerHTML = html;
+    chatLog.appendChild(el);
+    chatLog.scrollTop = chatLog.scrollHeight;
+    return el;
+  }
+
+  async function ask(question) {
+    chatHistory.push({ role: "user", content: question });
+    addBubble("user", esc(question));
+    const pending = addBubble("assistant", '<span class="caption">Looking through the notes…</span>');
+    const sendBtn = chatForm.querySelector("button");
+    sendBtn.disabled = true;
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: chatHistory }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+      chatHistory.push({ role: "assistant", content: result.reply });
+      const tools = result.tools_used.map(t =>
+        `${t.name}(${Object.values(t.args).join(", ")})`).join(" · ");
+      pending.innerHTML = renderMarkdown(result.reply) +
+        (tools ? `<div class="tools">Looked up: ${esc(tools)}</div>` : "");
+    } catch (err) {
+      chatHistory.pop();  // let the user retry the same question
+      pending.innerHTML = `<span class="error">${esc(err.message)}</span>`;
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  chatForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const question = chatForm.question.value.trim();
+    if (!question) return;
+    chatForm.question.value = "";
+    ask(question);
+  });
+  document.querySelectorAll(".suggestion").forEach(btn =>
+    btn.addEventListener("click", () => ask(btn.textContent)));
+
+  // ---------- Reports ----------
+
+  const reportForm = document.getElementById("report-form");
+  const reportMessage = document.getElementById("report-message");
+  const reportDraft = document.getElementById("report-draft");
+  let report = null;          // the last generated report
+  let reportEdited = false;   // true once the draft text has been changed by hand
+
+  function daysAgo(n) {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  }
+
+  function fmtDate(iso) {
+    return new Date(iso + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function reportPeriod() {
+    if (reportForm.period.value === "custom") return [reportForm.start_date.value, reportForm.end_date.value];
+    return [daysAgo(Number(reportForm.period.value)), localToday()];
+  }
+
+  // Facts at the top of the report come from the database, not the AI, so they are not editable
+  function reportHeader(r) {
+    const p = r.patient;
+    const sender = reportForm.sender.value.trim();
+    const period = `${fmtDate(r.period.from)} – ${fmtDate(r.period.to)} (${r.note_count} SOAP note${r.note_count === 1 ? "" : "s"})`;
+    const row = (label, value) => `<tr><th>${esc(label)}</th><td>${esc(value || "—")}</td></tr>`;
+    if (r.report_type === "gp") {
+      return `<table class="facts">
+        ${row("To", [p.primary_care_physician, p.physician_contact].filter(Boolean).join(", "))}
+        ${row("From", sender || "________________________")}
+        ${row("Date", fmtDate(localToday()))}
+        ${row("Re", `${p.first_name} ${p.last_name}, DOB ${fmtDate(p.date_of_birth)} (${p.patient_id})`)}
+        ${row("Period reviewed", period)}
+      </table>`;
+    }
+    return `<table class="facts">
+      ${row("Patient", `${p.first_name} ${p.last_name} (${p.patient_id})`)}
+      ${row("Date of birth", `${fmtDate(p.date_of_birth)}, age ${p.age ?? "—"}, ${p.gender}`)}
+      ${row("Chronic conditions", p.chronic_conditions)}
+      ${row("Allergies", p.allergies)}
+      ${row("Mobility", p.mobility_status)}
+      ${row("Primary care physician", p.primary_care_physician)}
+      ${row("Care status", p.care_status)}
+      ${row("Period", period)}
+    </table>`;
+  }
+
+  function renderDraft() {
+    reportDraft.hidden = false;
+    reportDraft.innerHTML = `
+      <h3 style="margin:0 0 12px">${esc(report.title)}</h3>
+      ${reportHeader(report)}
+      ${report.sections.map(s => `
+        <label>${esc(s.heading)}
+          <textarea data-section="${esc(s.key)}">${esc(s.text)}</textarea>
+        </label>`).join("")}
+      <div class="caption" style="margin-bottom:12px">AI-generated draft. Check every statement against the notes dated in brackets, and edit before printing.</div>
+      <div class="actions"><button type="button" class="primary" id="print-report">Print / Save as PDF</button></div>`;
+    reportEdited = false;
+    reportDraft.querySelectorAll("textarea").forEach(t => t.addEventListener("input", () => { reportEdited = true; }));
+    document.getElementById("print-report").addEventListener("click", printReport);
+  }
+
+  function printReport() {
+    const sender = reportForm.sender.value.trim();
+    const sections = report.sections.map(s => {
+      const text = reportDraft.querySelector(`[data-section="${s.key}"]`).value;
+      return `<h2>${esc(s.heading)}</h2>${renderMarkdown(text)}`;
+    }).join("");
+    const physician = report.patient.primary_care_physician;
+    const body = report.report_type === "gp"
+      ? `<p>Dear ${esc(physician || "Doctor")},</p>${sections}
+         <div class="sign"><p>Kind regards,</p><p style="margin-top:28pt">${esc(sender || "________________________")}</p></div>`
+      : `${sections}<div class="sign"><p>Prepared by: ${esc(sender || "________________________")}</p></div>`;
+    document.getElementById("print-view").innerHTML = `
+      <h1>${esc(report.title)}</h1>
+      ${reportHeader(report)}
+      ${body}
+      <footer>AI-assisted draft generated on ${esc(fmtDate(report.generated_on))} from ${report.note_count} home nursing SOAP notes.
+        Dates in brackets refer to the source notes. Reviewed by: ______________________ &nbsp; Signature: ______________________</footer>`;
+    window.print();
+  }
+
+  reportForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (report && reportEdited && !confirm("Generate a new report? Your edits to the current draft will be lost.")) return;
+    const [start_date, end_date] = reportPeriod();
+    const btn = document.getElementById("generate-report");
+    btn.disabled = true;
+    btn.textContent = "Generating…";
+    showMessage(reportMessage, "");
+    try {
+      const res = await fetch("/api/reports/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id: reportForm.patient_id.value, report_type: reportForm.report_type.value,
+                               start_date, end_date }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || `HTTP ${res.status}`);
+      report = result;
+      renderDraft();
+    } catch (err) {
+      showMessage(reportMessage, "Could not generate the report: " + err.message, "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Generate";
+    }
+  });
+
+  reportForm.period.addEventListener("change", () => {
+    const custom = reportForm.period.value === "custom";
+    document.getElementById("custom-period").hidden = !custom;
+    reportForm.start_date.required = reportForm.end_date.required = custom;
+    if (custom && !reportForm.end_date.value) {
+      reportForm.start_date.value = daysAgo(90);
+      reportForm.end_date.value = localToday();
+    }
+  });
+  // The header shows the sender, so keep it current while typing
+  reportForm.sender.addEventListener("input", () => {
+    const table = reportDraft.querySelector(".facts");
+    if (report && table) table.outerHTML = reportHeader(report);
+  });
+
+  noteForm.date.value = localToday();
+  loadPatients();
+</script>
+</body>
+</html>
