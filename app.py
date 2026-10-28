@@ -1,12 +1,13 @@
 import base64
 import datetime
+import hmac
 import json
 import os
 
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
 from openai import OpenAI, OpenAIError
 
 load_dotenv()
@@ -29,6 +30,20 @@ REQUIRED_PATIENT_FIELDS = {"first_name": "first name", "last_name": "last name",
 
 app = Flask(__name__, static_folder="static")
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # uploads up to 20 MB
+
+
+# When APP_PASSWORD is set (on the web host), every page asks for it; locally it is left unset
+APP_PASSWORD = os.environ.get("APP_PASSWORD", "")
+
+
+@app.before_request
+def require_password():
+    if not APP_PASSWORD:
+        return None
+    auth = request.authorization
+    if auth and hmac.compare_digest(auth.password or "", APP_PASSWORD):
+        return None
+    return Response("Password required", 401, {"WWW-Authenticate": 'Basic realm="Home Nursing Notes"'})
 
 
 @app.errorhandler(413)
@@ -517,5 +532,6 @@ def index():
 
 
 if __name__ == "__main__":
+    # Local development only; the web host runs gunicorn (debug off).
     # Port 5000 is taken by AirPlay Receiver on macOS
     app.run(debug=True, port=8000)
